@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hipergrafo 3D com Dados de Pessoas</title>
+    <title>Hipergrafo 3D Ruliad</title>
     <style>
         body {
             margin: 0;
@@ -51,64 +51,68 @@
         let edges = [];
         let stop = false;
 
-        async function fetchRandomUser() {
-            const url = 'https://randomuser.me/api/';
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                const user = data.results[0];
-                return {
-                    name: `${user.name.first} ${user.name.last}`,
-                    dateOfBirth: user.dob.date,
-                    age: user.dob.age
-                };
-            } catch (error) {
-                console.error('Erro ao buscar dados do usuário:', error);
-                return {
-                    name: 'Desconhecido',
-                    dateOfBirth: 'Desconhecido',
-                    age: 'Desconhecido'
-                };
-            }
+        function getRandomName() {
+            const firstNames = ["Alice", "Bob", "Carol", "David", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy"];
+            const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Garcia", "Rodriguez", "Martinez"];
+            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+            return `${firstName} ${lastName}`;
         }
 
-        function createTextSprite(text) {
-            let canvas = document.createElement('canvas');
-            let context = canvas.getContext('2d');
-            canvas.width = 256;
-            canvas.height = 128;
-
-            context.beginPath();
-            context.arc(25, 25, 20, 0, 2 * Math.PI, false);
-            context.fillStyle = 'gray';
-            context.fill();
-            context.lineWidth = 2;
-            context.strokeStyle = 'white';
-            context.stroke();
-            context.closePath();
-
-            context.font = '20px Arial';
-            context.fillStyle = 'white';
-            context.textBaseline = 'top';
-            context.fillText(text, 60, 10);
-
-            let texture = new THREE.CanvasTexture(canvas);
-            let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-            let sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(150, 75, 1);
-            return sprite;
+        function getRandomDateOfBirth() {
+            const start = new Date(1940, 0, 1);
+            const end = new Date(2020, 0, 1);
+            const dateOfBirth = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+            return dateOfBirth;
         }
 
-        function createNode(x, y, z, person) {
+        function calculateAge(dateOfBirth) {
+            const ageDifMs = Date.now() - dateOfBirth.getTime();
+            const ageDate = new Date(ageDifMs);
+            return Math.abs(ageDate.getUTCFullYear() - 1970);
+        }
+
+        let people = [];
+        for (let i = 0; i < 1000; i++) {
+            const name = getRandomName();
+            const dob = getRandomDateOfBirth();
+            const age = calculateAge(dob);
+            people.push({
+                name: name,
+                dateOfBirth: dob.toLocaleDateString(),
+                age: age,
+                avatarUrl: `https://picsum.photos/100?random=${i}` // Adiciona uma URL de imagem aleatória
+            });
+        }
+
+        function createImageSprite(imageUrl) {
+            return new Promise((resolve, reject) => {
+                let img = new Image();
+                img.onload = () => {
+                    let texture = new THREE.Texture(img);
+                    texture.needsUpdate = true;
+                    let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                    let sprite = new THREE.Sprite(spriteMaterial);
+                    sprite.scale.set(100, 100, 1); // Ajustar o tamanho da imagem
+                    resolve(sprite);
+                };
+                img.onerror = reject;
+                img.crossOrigin = 'Anonymous'; // Para evitar problemas de CORS
+                img.src = imageUrl;
+            });
+        }
+
+        async function createNode(x, y, z, person) {
             let node = new THREE.Mesh(geometry, material);
             node.position.set(x, y, z);
             scene.add(node);
 
-            let text = `${person.name}\n${person.dateOfBirth}\nIdade: ${person.age}`;
-            let sprite = createTextSprite(text);
+            // Adiciona a imagem do avatar
+            let sprite = await createImageSprite(person.avatarUrl);
             sprite.position.set(x, y + 10, z);
             nodes.push({ node, sprite, person });
             scene.add(sprite);
+
             return node;
         }
 
@@ -131,18 +135,16 @@
         let personIndex = 0;
 
         function ruliadRule() {
-            if (stop || personIndex >= 1000) return;
+            if (stop || personIndex >= people.length) return;
 
-            fetchRandomUser().then(person => {
-                let newPos = randomPosition();
-                let newNode = createNode(newPos.x, newPos.y, newPos.z, person);
+            let person = people[personIndex++];
+            let newPos = randomPosition();
+            createNode(newPos.x, newPos.y, newPos.z, person);
 
-                if (nodes.length > 1) {
-                    let baseNode = nodes[Math.floor(Math.random() * (nodes.length - 1))];
-                    createEdge(baseNode.node, newNode);
-                }
-            });
-            personIndex++;
+            if (nodes.length > 1) {
+                let baseNode = nodes[Math.floor(Math.random() * (nodes.length - 1))];
+                createEdge(baseNode.node, nodes[nodes.length - 1].node);
+            }
         }
 
         function animate() {
@@ -155,6 +157,10 @@
 
         document.getElementById('stopButton').addEventListener('click', () => {
             stop = true;
+        });
+
+        document.getElementById('cameraButton').addEventListener('click', () => {
+            camera.rotation.y += Math.PI;
         });
 
         window.addEventListener('wheel', (event) => {
