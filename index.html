@@ -91,13 +91,29 @@
         function createTextSprite(text) {
             let canvas = document.createElement('canvas');
             let context = canvas.getContext('2d');
-            context.font = '24px Arial';
+            canvas.width = 256;
+            canvas.height = 128;
+
+            // Desenhar um círculo para representar o avatar
+            context.beginPath();
+            context.arc(25, 25, 20, 0, 2 * Math.PI, false);
+            context.fillStyle = 'gray';
+            context.fill();
+            context.lineWidth = 2;
+            context.strokeStyle = 'white';
+            context.stroke();
+            context.closePath();
+
+            // Desenhar o texto
+            context.font = '20px Arial';
             context.fillStyle = 'white';
-            context.fillText(text, 0, 24);
+            context.textBaseline = 'top';
+            context.fillText(text, 60, 10);
+
             let texture = new THREE.CanvasTexture(canvas);
             let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
             let sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(100, 50, 1); // Ajustar o tamanho do texto
+            sprite.scale.set(150, 75, 1); // Ajustar o tamanho do texto
             return sprite;
         }
 
@@ -110,9 +126,8 @@
             let text = `${person.name}\n${person.dateOfBirth}\nIdade: ${person.age}`;
             let sprite = createTextSprite(text);
             sprite.position.set(x, y + 10, z); // Posicionar o texto acima do nó
-            scene.add(sprite);
-
             nodes.push({ node, sprite, person });
+            scene.add(sprite);
             return node;
         }
 
