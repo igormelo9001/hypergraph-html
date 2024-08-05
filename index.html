@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hipergrafo Ruliad</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const nodes = [];
+        const edges = [];
+        const nodeRadius = 5;
+        const nodeColor = 'green';
+        const edgeColor = 'white';
+        const edgeInterval = 500;
+
+        function createNode(x, y) {
+            nodes.push({ x, y });
+        }
+
+        function createEdge(node1, node2) {
+            edges.push({ node1, node2 });
+        }
+
+        function drawNode(node) {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, nodeRadius, 0, Math.PI * 2);
+            ctx.fillStyle = nodeColor;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawEdge(edge) {
+            ctx.beginPath();
+            ctx.moveTo(edge.node1.x, edge.node1.y);
+            ctx.lineTo(edge.node2.x, edge.node2.y);
+            ctx.strokeStyle = edgeColor;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            edges.forEach(drawEdge);
+            nodes.forEach(drawNode);
+        }
+
+        function randomPosition() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height
+            };
+        }
+
+        function edgeExists(node1, node2) {
+            return edges.some(edge => 
+                (edge.node1 === node1 && edge.node2 === node2) ||
+                (edge.node1 === node2 && edge.node2 === node1)
+            );
+        }
+
+        function ruliadRule() {
+            const pos = randomPosition();
+            const newNode = { x: pos.x, y: pos.y };
+            createNode(newNode.x, newNode.y);
+
+            if (nodes.length < 2) return;
+
+            // Seleciona dois nós aleatórios existentes
+            const node1 = nodes[Math.floor(Math.random() * nodes.length)];
+            const node2 = nodes[Math.floor(Math.random() * nodes.length)];
+
+            if (node1 !== node2) {
+                // Se a aresta entre node1 e node2 não existe, cria a aresta e conecta o novo nó
+                if (!edgeExists(node1, node2)) {
+                    createEdge(node1, node2);
+                }
+
+                // Conecta o novo nó ao node1 ou node2
+                const connectTo = Math.random() < 0.5 ? node1 : node2;
+                createEdge(newNode, connectTo);
+            }
+        }
+
+        setInterval(() => {
+            ruliadRule();
+            draw();
+        }, edgeInterval);
+
+    </script>
+</body>
+</html>
