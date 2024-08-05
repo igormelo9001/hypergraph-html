@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hipergrafo 3D Ruliad</title>
+    <title>Hipergrafo 3D com Dados de Pessoas</title>
     <style>
         body {
             margin: 0;
@@ -51,41 +51,25 @@
         let edges = [];
         let stop = false;
 
-        // Função para gerar um nome aleatório
-        function getRandomName() {
-            const firstNames = ["Alice", "Bob", "Carol", "David", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy"];
-            const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Garcia", "Rodriguez", "Martinez"];
-            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-            return `${firstName} ${lastName}`;
-        }
-
-        // Função para gerar uma data de nascimento aleatória
-        function getRandomDateOfBirth() {
-            const start = new Date(1940, 0, 1);
-            const end = new Date(2020, 0, 1);
-            const dateOfBirth = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-            return dateOfBirth;
-        }
-
-        // Função para calcular a idade com base na data de nascimento
-        function calculateAge(dateOfBirth) {
-            const ageDifMs = Date.now() - dateOfBirth.getTime();
-            const ageDate = new Date(ageDifMs);
-            return Math.abs(ageDate.getUTCFullYear() - 1970);
-        }
-
-        // Gerando a lista de 1000 pessoas
-        let people = [];
-        for (let i = 0; i < 1000; i++) {
-            const name = getRandomName();
-            const dob = getRandomDateOfBirth();
-            const age = calculateAge(dob);
-            people.push({
-                name: name,
-                dateOfBirth: dob.toLocaleDateString(),
-                age: age
-            });
+        async function fetchRandomUser() {
+            const url = 'https://randomuser.me/api/';
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                const user = data.results[0];
+                return {
+                    name: `${user.name.first} ${user.name.last}`,
+                    dateOfBirth: user.dob.date,
+                    age: user.dob.age
+                };
+            } catch (error) {
+                console.error('Erro ao buscar dados do usuário:', error);
+                return {
+                    name: 'Desconhecido',
+                    dateOfBirth: 'Desconhecido',
+                    age: 'Desconhecido'
+                };
+            }
         }
 
         function createTextSprite(text) {
@@ -94,7 +78,6 @@
             canvas.width = 256;
             canvas.height = 128;
 
-            // Desenhar um círculo para representar o avatar
             context.beginPath();
             context.arc(25, 25, 20, 0, 2 * Math.PI, false);
             context.fillStyle = 'gray';
@@ -104,7 +87,6 @@
             context.stroke();
             context.closePath();
 
-            // Desenhar o texto
             context.font = '20px Arial';
             context.fillStyle = 'white';
             context.textBaseline = 'top';
@@ -113,7 +95,7 @@
             let texture = new THREE.CanvasTexture(canvas);
             let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
             let sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(150, 75, 1); // Ajustar o tamanho do texto
+            sprite.scale.set(150, 75, 1);
             return sprite;
         }
 
@@ -122,10 +104,9 @@
             node.position.set(x, y, z);
             scene.add(node);
 
-            // Adicionar texto ao nó
             let text = `${person.name}\n${person.dateOfBirth}\nIdade: ${person.age}`;
             let sprite = createTextSprite(text);
-            sprite.position.set(x, y + 10, z); // Posicionar o texto acima do nó
+            sprite.position.set(x, y + 10, z);
             nodes.push({ node, sprite, person });
             scene.add(sprite);
             return node;
@@ -150,16 +131,18 @@
         let personIndex = 0;
 
         function ruliadRule() {
-            if (stop || personIndex >= people.length) return;
+            if (stop || personIndex >= 1000) return;
 
-            let person = people[personIndex++];
-            let newPos = randomPosition();
-            let newNode = createNode(newPos.x, newPos.y, newPos.z, person);
+            fetchRandomUser().then(person => {
+                let newPos = randomPosition();
+                let newNode = createNode(newPos.x, newPos.y, newPos.z, person);
 
-            if (nodes.length > 1) {
-                let baseNode = nodes[Math.floor(Math.random() * (nodes.length - 1))];
-                createEdge(baseNode.node, newNode);
-            }
+                if (nodes.length > 1) {
+                    let baseNode = nodes[Math.floor(Math.random() * (nodes.length - 1))];
+                    createEdge(baseNode.node, newNode);
+                }
+            });
+            personIndex++;
         }
 
         function animate() {
@@ -170,32 +153,27 @@
         setInterval(ruliadRule, 500);
         animate();
 
-        // Stop Button Event Listener
         document.getElementById('stopButton').addEventListener('click', () => {
             stop = true;
         });
 
-        // Mouse Scroll Event Listener for Zoom In/Out
         window.addEventListener('wheel', (event) => {
-            camera.position.z += event.deltaY * 0.1; // Controla o zoom com o scroll do mouse
+            camera.position.z += event.deltaY * 0.1;
         });
 
-        // Variables for Camera Drag and Rotation Movement
         let isDragging = false;
         let isRightClick = false;
         let previousMousePosition = { x: 0, y: 0 };
 
-        // Mouse Down Event Listener to Start Dragging or Rotating
         window.addEventListener('mousedown', (event) => {
             isDragging = true;
-            isRightClick = event.button === 2; // Check if the right button is pressed
+            isRightClick = event.button === 2;
             previousMousePosition = {
                 x: event.clientX,
                 y: event.clientY
             };
         });
 
-        // Mouse Move Event Listener for Dragging or Rotating
         window.addEventListener('mousemove', (event) => {
             if (isDragging) {
                 let deltaMove = {
@@ -204,14 +182,12 @@
                 };
 
                 if (isRightClick) {
-                    // Rotacionar a câmera em torno da cena com o botão direito
                     let rotationSpeed = 0.005;
                     camera.rotation.y -= deltaMove.x * rotationSpeed;
                     camera.rotation.x -= deltaMove.y * rotationSpeed;
                 } else {
-                    // Movimento de arrasto com o botão esquerdo
-                    camera.position.x -= deltaMove.x * 0.1; // Controla o movimento horizontal
-                    camera.position.y += deltaMove.y * 0.1; // Controla o movimento vertical
+                    camera.position.x -= deltaMove.x * 0.1;
+                    camera.position.y += deltaMove.y * 0.1;
                 }
 
                 previousMousePosition = {
@@ -221,12 +197,10 @@
             }
         });
 
-        // Mouse Up Event Listener to Stop Dragging or Rotating
         window.addEventListener('mouseup', () => {
             isDragging = false;
         });
 
-        // Prevent context menu on right-click
         window.addEventListener('contextmenu', (event) => event.preventDefault());
     </script>
 </body>
