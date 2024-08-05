@@ -81,8 +81,45 @@
                 name: name,
                 dateOfBirth: dob.toLocaleDateString(),
                 age: age,
-                avatarUrl: `https://picsum.photos/100?random=${i}` // Adiciona uma URL de imagem aleatória
+                avatarUrl: `https://picsum.photos/200?random=${i}` // Adiciona uma URL de imagem aleatória
             });
+        }
+
+        function createImageSphere(imageUrl) {
+            return new Promise((resolve, reject) => {
+                let img = new Image();
+                img.onload = () => {
+                    let texture = new THREE.Texture(img);
+                    texture.needsUpdate = true;
+                    let sphereGeometry = new THREE.SphereGeometry(50, 32, 32); // Ajustar o tamanho da esfera
+                    let sphereMaterial = new THREE.MeshBasicMaterial({ map: texture });
+                    let sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                    resolve(sphere);
+                };
+                img.onerror = reject;
+                img.crossOrigin = 'Anonymous'; // Para evitar problemas de CORS
+                img.src = imageUrl;
+            });
+        }
+
+        async function createNode(x, y, z, person) {
+            let node = new THREE.Mesh(geometry, material);
+            node.position.set(x, y, z);
+            scene.add(node);
+
+            // Adiciona a esfera com a imagem do avatar
+            let avatarSphere = await createImageSphere(person.avatarUrl);
+            avatarSphere.position.set(x, y, z);
+            nodes.push({ node, avatarSphere, person });
+            scene.add(avatarSphere);
+
+            // Adiciona o texto com informações
+            let infoText = `${person.name}\n${person.dateOfBirth}\nIdade: ${person.age}\nURL: ${person.avatarUrl}`;
+            let textSprite = createTextSprite(infoText);
+            textSprite.position.set(x, y - 60, z); // Ajustar a posição do texto
+            scene.add(textSprite);
+
+            return node;
         }
 
         function createTextSprite(text) {
@@ -99,43 +136,6 @@
             let sprite = new THREE.Sprite(spriteMaterial);
             sprite.scale.set(200, 100, 1); // Ajustar o tamanho do texto
             return sprite;
-        }
-
-        function createImageSprite(imageUrl) {
-            return new Promise((resolve, reject) => {
-                let img = new Image();
-                img.onload = () => {
-                    let texture = new THREE.Texture(img);
-                    texture.needsUpdate = true;
-                    let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-                    let sprite = new THREE.Sprite(spriteMaterial);
-                    sprite.scale.set(100, 100, 1); // Ajustar o tamanho da imagem
-                    resolve(sprite);
-                };
-                img.onerror = reject;
-                img.crossOrigin = 'Anonymous'; // Para evitar problemas de CORS
-                img.src = imageUrl;
-            });
-        }
-
-        async function createNode(x, y, z, person) {
-            let node = new THREE.Mesh(geometry, material);
-            node.position.set(x, y, z);
-            scene.add(node);
-
-            // Adiciona a imagem do avatar
-            let avatarSprite = await createImageSprite(person.avatarUrl);
-            avatarSprite.position.set(x, y + 20, z);
-            nodes.push({ node, avatarSprite, person });
-            scene.add(avatarSprite);
-
-            // Adiciona o texto com informações
-            let infoText = `${person.name}\n${person.dateOfBirth}\nIdade: ${person.age}\nURL: ${person.avatarUrl}`;
-            let textSprite = createTextSprite(infoText);
-            textSprite.position.set(x, y - 20, z);
-            scene.add(textSprite);
-
-            return node;
         }
 
         function createEdge(node1, node2) {
