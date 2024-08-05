@@ -32,7 +32,9 @@
         const edgeInterval = 500;
 
         function createNode(x, y) {
-            nodes.push({ x, y });
+            const newNode = { x, y };
+            nodes.push(newNode);
+            return newNode;
         }
 
         function createEdge(node1, node2) {
@@ -69,33 +71,34 @@
             };
         }
 
-        function edgeExists(node1, node2) {
-            return edges.some(edge => 
-                (edge.node1 === node1 && edge.node2 === node2) ||
-                (edge.node1 === node2 && edge.node2 === node1)
-            );
-        }
-
         function ruliadRule() {
-            const pos = randomPosition();
-            const newNode = { x: pos.x, y: pos.y };
-            createNode(newNode.x, newNode.y);
+            if (nodes.length === 0) {
+                // Se não houver nós, cria o primeiro nó no centro da tela
+                const pos = { x: canvas.width / 2, y: canvas.height / 2 };
+                createNode(pos.x, pos.y);
+                return;
+            }
 
-            if (nodes.length < 2) return;
+            // Seleciona um nó aleatório
+            const baseNode = nodes[Math.floor(Math.random() * nodes.length)];
 
-            // Seleciona dois nós aleatórios existentes
-            const node1 = nodes[Math.floor(Math.random() * nodes.length)];
-            const node2 = nodes[Math.floor(Math.random() * nodes.length)];
+            // Encontra os nós vizinhos conectados a este nó
+            const neighbors = edges
+                .filter(edge => edge.node1 === baseNode || edge.node2 === baseNode)
+                .map(edge => edge.node1 === baseNode ? edge.node2 : edge.node1);
 
-            if (node1 !== node2) {
-                // Se a aresta entre node1 e node2 não existe, cria a aresta e conecta o novo nó
-                if (!edgeExists(node1, node2)) {
-                    createEdge(node1, node2);
-                }
-
-                // Conecta o novo nó ao node1 ou node2
-                const connectTo = Math.random() < 0.5 ? node1 : node2;
-                createEdge(newNode, connectTo);
+            // Se não há vizinhos, cria uma nova conexão
+            if (neighbors.length === 0) {
+                const newPos = randomPosition();
+                const newNode = createNode(newPos.x, newPos.y);
+                createEdge(baseNode, newNode);
+            } else {
+                // Cria uma nova aresta entre vizinhos
+                const neighborNode = neighbors[Math.floor(Math.random() * neighbors.length)];
+                const newPos = randomPosition();
+                const newNode = createNode(newPos.x, newPos.y);
+                createEdge(baseNode, newNode);
+                createEdge(newNode, neighborNode);
             }
         }
 
