@@ -9,9 +9,41 @@
             margin: 0;
             overflow: hidden;
             background-color: black;
+            font-family: Arial, sans-serif;
         }
         canvas {
             display: block;
+        }
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            z-index: 1;
+        }
+        #searchContainer {
+            display: flex;
+            align-items: center;
+        }
+        #searchInput {
+            padding: 5px;
+            font-size: 16px;
+        }
+        #searchButton {
+            padding: 5px 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #searchResults {
+            color: white;
+            max-width: 600px;
+            word-wrap: break-word;
         }
         #controls {
             position: fixed;
@@ -26,14 +58,32 @@
             font-size: 16px;
             cursor: pointer;
         }
+        #apiOutput {
+            position: fixed;
+            bottom: 80px;
+            width: 100%;
+            color: white;
+            background-color: #222;
+            padding: 10px;
+            overflow: auto;
+            max-height: 300px;
+        }
     </style>
 </head>
 <body>
+    <div id="header">
+        <div id="searchContainer">
+            <input type="text" id="searchInput" placeholder="Pesquisar nome...">
+            <button id="searchButton">Pesquisar</button>
+        </div>
+        <div id="searchResults"></div>
+    </div>
+    <canvas id="canvas"></canvas>
     <div id="controls">
         <button id="stopButton">Stop</button>
         <button id="cameraButton">Movimentar Câmera</button>
     </div>
-    <canvas id="canvas"></canvas>
+    <div id="apiOutput"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         let canvas = document.getElementById('canvas');
@@ -81,7 +131,7 @@
                 name: name,
                 dateOfBirth: dob.toLocaleDateString(),
                 age: age,
-                avatarUrl: `https://picsum.photos/200?random=${i}` // Adiciona uma URL de imagem aleatória
+                avatarUrl: `https://picsum.photos/200?random=${i}`
             });
         }
 
@@ -91,13 +141,13 @@
                 img.onload = () => {
                     let texture = new THREE.Texture(img);
                     texture.needsUpdate = true;
-                    let sphereGeometry = new THREE.SphereGeometry(50, 32, 32); // Ajustar o tamanho da esfera
+                    let sphereGeometry = new THREE.SphereGeometry(50, 32, 32);
                     let sphereMaterial = new THREE.MeshBasicMaterial({ map: texture });
                     let sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
                     resolve(sphere);
                 };
                 img.onerror = reject;
-                img.crossOrigin = 'Anonymous'; // Para evitar problemas de CORS
+                img.crossOrigin = 'Anonymous';
                 img.src = imageUrl;
             });
         }
@@ -107,16 +157,14 @@
             node.position.set(x, y, z);
             scene.add(node);
 
-            // Adiciona a esfera com a imagem do avatar
             let avatarSphere = await createImageSphere(person.avatarUrl);
             avatarSphere.position.set(x, y, z);
             nodes.push({ node, avatarSphere, person });
             scene.add(avatarSphere);
 
-            // Adiciona o texto com informações
             let infoText = `${person.name}\n${person.dateOfBirth}\nIdade: ${person.age}\nURL: ${person.avatarUrl}`;
             let textSprite = createTextSprite(infoText);
-            textSprite.position.set(x, y - 60, z); // Ajustar a posição do texto
+            textSprite.position.set(x, y - 60, z);
             scene.add(textSprite);
 
             return node;
@@ -134,7 +182,7 @@
             let texture = new THREE.CanvasTexture(canvas);
             let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
             let sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(200, 100, 1); // Ajustar o tamanho do texto
+            sprite.scale.set(200, 100, 1);
             return sprite;
         }
 
@@ -203,21 +251,18 @@
         });
 
         window.addEventListener('mousemove', (event) => {
-            if (isDragging) {
+            if (isDragging && isRightClick) {
                 let deltaMove = {
                     x: event.clientX - previousMousePosition.x,
                     y: event.clientY - previousMousePosition.y
                 };
-
-                if (isRightClick) {
-                    let rotationSpeed = 0.005;
-                    camera.rotation.y -= deltaMove.x * rotationSpeed;
-                    camera.rotation.x -= deltaMove.y * rotationSpeed;
-                } else {
+                if (event.shiftKey) {
                     camera.position.x -= deltaMove.x * 0.1;
                     camera.position.y += deltaMove.y * 0.1;
+                } else {
+                    camera.rotation.y += deltaMove.x * 0.005;
+                    camera.rotation.x += deltaMove.y * 0.005;
                 }
-
                 previousMousePosition = {
                     x: event.clientX,
                     y: event.clientY
@@ -229,7 +274,46 @@
             isDragging = false;
         });
 
-        window.addEventListener('contextmenu', (event) => event.preventDefault());
+        document.getElementById('searchButton').addEventListener('click', async () => {
+            let query = document.getElementById('searchInput').value;
+            if (!query) return;
+
+            let apiKey = 'AIzaSyBHXIdjZ18hom65cZpazCYjLjbJiYMk-kc'; // Substitua pela sua chave da API
+            let searchEngineId = 'b0d9ea511802c4abb'; // Substitua pelo ID do seu mecanismo de pesquisa
+
+            let searchUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&key=${apiKey}&cx=${searchEngineId}`;
+            
+            document.getElementById('apiOutput').innerHTML = `Requisitando: ${searchUrl}<br>`;
+
+            try {
+                let response = await fetch(searchUrl);
+                let data = await response.json();
+                document.getElementById('apiOutput').innerHTML += `Resposta: ${JSON.stringify(data, null, 2)}<br>`;
+
+                if (data.items && data.items.length > 0) {
+                    let firstResult = data.items[0];
+                    let resultUrl = firstResult.link;
+                    let resultSnippet = firstResult.snippet;
+                    document.getElementById('searchResults').innerHTML = `
+                        <div>
+                            <a href="${resultUrl}" target="_blank">${resultUrl}</a>
+                            <p>${resultSnippet}</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('searchResults').innerHTML = 'Nenhum resultado encontrado.';
+                }
+            } catch (error) {
+                document.getElementById('apiOutput').innerHTML += `Erro: ${error.message}<br>`;
+                console.error('Erro na requisição:', error);
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
     </script>
 </body>
 </html>
