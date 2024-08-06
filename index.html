@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hipergrafo 3D com Dados de Pessoas</title>
+    <title>Hipergrafo 3D com Dados de Pessoas e Rádio</title>
     <style>
         body {
             margin: 0;
@@ -26,9 +26,37 @@
             font-size: 16px;
             cursor: pointer;
         }
+        #radioPlayerContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            z-index: 1;
+        }
+        #rockRadioTitle {
+            margin-bottom: 10px;
+        }
+        audio {
+            width: 300px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
+    <div id="radioPlayerContainer">
+        <h3 id="rockRadioTitle">Rock Radio Player</h3>
+        <audio id="radioPlayer" controls>
+            <source src="https://rockfm-cope-rrcast.flumotion.com/cope/rockfm-low.mp3" type="audio/mp3">
+            Seu navegador não suporta o elemento de áudio.
+        </audio>
+        <div id="playerControls">
+            <button id="playButton">Play</button>
+            <button id="stopButtonRadio">Stop</button>
+        </div>
+    </div>
     <div id="controls">
         <button id="stopButton">Stop</button>
         <button id="cameraButton">Movimentar Câmera</button>
@@ -36,6 +64,7 @@
     <canvas id="canvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        // Código do Hipergrafo 3D
         let canvas = document.getElementById('canvas');
         let renderer = new THREE.WebGLRenderer({ canvas });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -202,6 +231,20 @@
         });
 
         window.addEventListener('contextmenu', (event) => event.preventDefault());
+
+        // Código para controlar o player de rádio
+        const radioPlayer = document.getElementById('radioPlayer');
+        const playButton = document.getElementById('playButton');
+        const stopButtonRadio = document.getElementById('stopButtonRadio');
+
+        playButton.addEventListener('click', () => {
+            radioPlayer.play();
+        });
+
+        stopButtonRadio.addEventListener('click', () => {
+            radioPlayer.pause();
+            radioPlayer.currentTime = 0;
+        });
     </script>
 </body>
 </html>
