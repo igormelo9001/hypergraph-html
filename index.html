@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hipergrafo Ruliad</title>
+    <title>Hipergrafo 3D Ruliad</title>
     <style>
         body {
             margin: 0;
@@ -13,97 +13,144 @@
         canvas {
             display: block;
         }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <div id="controls">
+        <button id="stopButton">Stop</button>
+        <button id="cameraButton">Movimentar Câmera</button>
+    </div>
     <canvas id="canvas"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        // Criação do renderizador WebGL
+        let canvas = document.getElementById('canvas');
+        let renderer = new THREE.WebGLRenderer({ canvas });
+        renderer.setSize(window.innerWidth, window.innerHeight);
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        let scene = new THREE.Scene();
+        let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 500;
 
-        const nodes = [];
-        const edges = [];
-        const nodeRadius = 5;
-        const nodeColor = 'green';
-        const edgeColor = 'white';
-        const edgeInterval = 500;
-
-        function createNode(x, y) {
-            nodes.push({ x, y });
-        }
-
-        function createEdge(node1, node2) {
-            edges.push({ node1, node2 });
-        }
-
-        function drawNode(node) {
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeRadius, 0, Math.PI * 2);
-            ctx.fillStyle = nodeColor;
-            ctx.fill();
-            ctx.closePath();
-        }
-
-        function drawEdge(edge) {
-            ctx.beginPath();
-            ctx.moveTo(edge.node1.x, edge.node1.y);
-            ctx.lineTo(edge.node2.x, edge.node2.y);
-            ctx.strokeStyle = edgeColor;
-            ctx.stroke();
-            ctx.closePath();
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            edges.forEach(drawEdge);
-            nodes.forEach(drawNode);
-        }
+        let nodes = [];
+        let edges = [];
+        let stop = false;
 
         function randomPosition() {
             return {
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height
+                x: (Math.random() - 0.5) * 1000,
+                y: (Math.random() - 0.5) * 1000,
+                z: (Math.random() - 0.5) * 1000
             };
         }
 
-        function edgeExists(node1, node2) {
-            return edges.some(edge => 
-                (edge.node1 === node1 && edge.node2 === node2) ||
-                (edge.node1 === node2 && edge.node2 === node1)
-            );
+        function createNode(x, y, z) {
+            let geometry = new THREE.SphereGeometry(5, 32, 32);
+            let material = new THREE.MeshBasicMaterial({ color: 'green' });
+            let node = new THREE.Mesh(geometry, material);
+            node.position.set(x, y, z);
+            scene.add(node);
+            nodes.push({ node, position: new THREE.Vector3(x, y, z) });
+        }
+
+        function createEdge(node1, node2) {
+            let edgeGeometry = new THREE.BufferGeometry().setFromPoints([node1.position, node2.position]);
+            let edgeMaterial = new THREE.LineBasicMaterial({ color: 'white' });
+            let edge = new THREE.Line(edgeGeometry, edgeMaterial);
+            scene.add(edge);
+            edges.push(edge);
         }
 
         function ruliadRule() {
-            const pos = randomPosition();
-            const newNode = { x: pos.x, y: pos.y };
-            createNode(newNode.x, newNode.y);
+            if (stop || nodes.length >= 1000) return;
 
-            if (nodes.length < 2) return;
+            let newPos = randomPosition();
+            createNode(newPos.x, newPos.y, newPos.z);
 
-            // Seleciona dois nós aleatórios existentes
-            const node1 = nodes[Math.floor(Math.random() * nodes.length)];
-            const node2 = nodes[Math.floor(Math.random() * nodes.length)];
-
-            if (node1 !== node2) {
-                // Se a aresta entre node1 e node2 não existe, cria a aresta e conecta o novo nó
-                if (!edgeExists(node1, node2)) {
-                    createEdge(node1, node2);
-                }
-
-                // Conecta o novo nó ao node1 ou node2
-                const connectTo = Math.random() < 0.5 ? node1 : node2;
-                createEdge(newNode, connectTo);
+            if (nodes.length > 1) {
+                let baseNode = nodes[Math.floor(Math.random() * (nodes.length - 1))];
+                createEdge(baseNode.node, nodes[nodes.length - 1].node);
             }
         }
 
-        setInterval(() => {
-            ruliadRule();
-            draw();
-        }, edgeInterval);
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
 
+        setInterval(ruliadRule, 500);
+        animate();
+
+        document.getElementById('stopButton').addEventListener('click', () => {
+            stop = true;
+        });
+
+        document.getElementById('cameraButton').addEventListener('click', () => {
+            if (nodes.length > 0) {
+                let initialNode = nodes[0];
+                camera.position.set(initialNode.position.x, initialNode.position.y, initialNode.position.z + 500);
+                camera.lookAt(initialNode.position);
+            }
+        });
+
+        window.addEventListener('wheel', (event) => {
+            camera.position.z += event.deltaY * 0.1;
+        });
+
+        let isDragging = false;
+        let isRightClick = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        window.addEventListener('mousedown', (event) => {
+            isDragging = true;
+            isRightClick = event.button === 2;
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        });
+
+        window.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                let deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+
+                if (isRightClick) {
+                    let rotationSpeed = 0.005;
+                    camera.rotation.y -= deltaMove.x * rotationSpeed;
+                    camera.rotation.x -= deltaMove.y * rotationSpeed;
+                } else {
+                    camera.position.x -= deltaMove.x * 0.1;
+                    camera.position.y += deltaMove.y * 0.1;
+                }
+
+                previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        window.addEventListener('contextmenu', (event) => event.preventDefault());
     </script>
 </body>
 </html>
