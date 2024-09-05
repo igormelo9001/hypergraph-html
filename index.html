@@ -15,11 +15,21 @@
         }
         #controls {
             position: fixed;
-            bottom: 20px;
+            bottom: 70px; /* Ajustado para ficar um pouco acima do player de rádio */
             width: 100%;
             display: flex;
             justify-content: center;
             gap: 20px;
+            z-index: 2; /* Garante que fique sobre o player de rádio */
+        }
+        #controls-container {
+            position: fixed;
+            bottom: 120px; /* Ajustado para separar do grid do hipergrafo */
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            z-index: 2; /* Garante que fique sobre o player de rádio */
         }
         button {
             padding: 10px 20px;
@@ -28,40 +38,32 @@
         }
         #radioPlayerContainer {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #333;
+            bottom: 0; /* Alinha ao rodapé da página */
+            width: 100%;
+            background-color: black; /* Remove a barra cinza */
             padding: 10px;
-            border-radius: 5px;
+            border-top: 1px solid #333;
             color: white;
-            z-index: 1;
-        }
-        #rockRadioTitle {
-            margin-bottom: 10px;
+            text-align: center;
+            z-index: 1; /* Mantém abaixo dos botões de controle */
         }
         audio {
-            width: 300px;
-            margin-bottom: 10px;
+            width: 100%; /* Ajusta para ocupar toda a largura */
         }
     </style>
 </head>
 <body>
-    <div id="radioPlayerContainer">
-        <h3 id="rockRadioTitle">Rock Radio Player</h3>
-        <audio id="radioPlayer" controls>
-            <source src="https://rockfm-cope-rrcast.flumotion.com/cope/rockfm-low.mp3" type="audio/mp3">
-            Seu navegador não suporta o elemento de áudio.
-        </audio>
-        <div id="playerControls">
-            <button id="playButton">Play</button>
-            <button id="stopButtonRadio">Stop</button>
-        </div>
-    </div>
-    <div id="controls">
+    <div id="controls-container">
         <button id="stopButton">Stop</button>
         <button id="cameraButton">Movimentar Câmera</button>
     </div>
     <canvas id="canvas"></canvas>
+    <div id="radioPlayerContainer">
+        <audio id="radioPlayer" controls>
+            <source src="https://rockfm-cope-rrcast.flumotion.com/cope/rockfm-low.mp3" type="audio/mp3">
+            Seu navegador não suporta o elemento de áudio.
+        </audio>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // Código do Hipergrafo 3D
@@ -79,6 +81,7 @@
         let nodes = [];
         let edges = [];
         let stop = false;
+        let isCameraMoving = false; // Controle de movimentação da câmera
 
         async function fetchRandomUser() {
             const url = 'https://randomuser.me/api/';
@@ -177,6 +180,11 @@
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
+
+            if (isCameraMoving) {
+                camera.position.x += 1;
+                camera.position.y += 1;
+            }
         }
 
         setInterval(ruliadRule, 500);
@@ -184,6 +192,10 @@
 
         document.getElementById('stopButton').addEventListener('click', () => {
             stop = true;
+        });
+
+        document.getElementById('cameraButton').addEventListener('click', () => {
+            isCameraMoving = !isCameraMoving;
         });
 
         window.addEventListener('wheel', (event) => {
